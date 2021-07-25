@@ -92,6 +92,20 @@ def get_loaders(
         train_annotations, train_images_dir, image_size, 1, 4, 100, transforms=train_augmentations
     )
     # train_dataset = Subset(train_dataset, [i for i in range(train_batch_size * 3)])
+
+    valid_dataset = COCOFileDataset(
+        valid_annotations, valid_images_dir, image_size, 1, 4, 100, transforms=valid_augmentations
+    )
+
+    if train_dataset.num_classes != valid_dataset.num_classes:
+        raise RuntimeError(
+            "Different number of classes in train ({}) and validation ({}) datasets!".format(
+                train_dataset.num_classes, valid_dataset.num_classes
+            )
+        )
+    if train_dataset.class_labels != valid_dataset.class_labels:
+        raise RuntimeError("Different labels in train and validation datasets!")
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=train_batch_size,
@@ -103,9 +117,6 @@ def get_loaders(
         prefetch_factor=1,
     )
 
-    valid_dataset = COCOFileDataset(
-        valid_annotations, valid_images_dir, image_size, 1, 4, 100, transforms=valid_augmentations
-    )
     valid_loader = DataLoader(
         valid_dataset,
         batch_size=valid_batch_size,

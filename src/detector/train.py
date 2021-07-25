@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from mean_average_precision import MetricBuilder
 
-from detector.criterions import center_loss
+from detector.criterions import CenterLoss
 from detector.datasets import get_loaders, pred2box
 from detector.models import ResNetCenterNet
 from detector.utils import (
@@ -55,9 +55,9 @@ def train_fn(loader, model, device, criterion, optimizer, scheduler=None, verbos
             imgs, heatmaps, regrs = t2d((batch["image"], batch["heatmap"], batch["regr"]), device)
 
             hm, reg = model(imgs)
-            preds = torch.cat((hm, reg), 1)
+            # preds = torch.cat((hm, reg), 1)
 
-            loss, mask_loss, regr_loss = criterion(preds, heatmaps, regrs)
+            loss, mask_loss, regr_loss = criterion(hm, reg, heatmaps, regrs)
 
             optimizer.zero_grad()
             loss.backward()
@@ -111,9 +111,9 @@ def valid_fn(loader, model, device, criterion, num_classes, class_labels, verbos
             batch_size = imgs.size(0)
 
             hm, reg = model(imgs)
-            preds = torch.cat((hm, reg), 1)
+            # preds = torch.cat((hm, reg), 1)
 
-            loss, mask_loss, regr_loss = criterion(preds, heatmaps, regrs)
+            loss, mask_loss, regr_loss = criterion(hm, reg, heatmaps, regrs)
 
             mask_loss_value = mask_loss.item()
             regr_loss_value = regr_loss.item()
@@ -238,13 +238,13 @@ def experiment(device, args=None):
     # experiment parts
     #######################################################################
     seed_all(42)
-    model = ResNetCenterNet(num_classes=1, model_name="resnet18")
+    model = ResNetCenterNet(num_classes=num_classes, model_name="resnet18")
     if args["checkpoint"]:
         state = torch.load(args["checkpoint"], map_location="cpu")
         model.load_state_dict(state["model_state_dict"])
         LOGGER.info("Loaded model state from '{}'".format(args["checkpoint"]))
     model = model.to(device)
-    criterion = center_loss
+    criterion = CenterLoss(num_classes, regr_loss_weight=10)
     optimizer = OPTIMIZER_REGISTRY["AdamW"](model.parameters(), **{"lr": args["lr"]})
     epoch_scheduler = SCHEDULER_REGISTRY["CosineAnnealingWarmRestarts"](optimizer, **{"T_0": args["num_epochs"]})
     batch_scheduler = None
