@@ -5,22 +5,23 @@ from .blocks import Up
 
 
 class ResNetCenterNet(nn.Module):
-    def __init__(self, num_classes=1, model_name="resnet18"):
+    def __init__(self, num_classes=1, model_name="resnet18", bilinear=True):
         super().__init__()
         # create backbone.
         basemodel = torchvision.models.resnet18(pretrained=True)  # turn this on for training
         basemodel = nn.Sequential(*list(basemodel.children())[:-2])
         # set basemodel
         self.base_model = basemodel
+        self.bilinear = bilinear
 
         if model_name == "resnet34" or model_name == "resnet18":
             num_ch = 512
         else:
             num_ch = 2048
 
-        self.up1 = Up(num_ch, 512)
-        self.up2 = Up(512, 256)
-        self.up3 = Up(256, 256)
+        self.up1 = Up(num_ch, 512, bilinear)
+        self.up2 = Up(512, 256, bilinear)
+        self.up3 = Up(256, 256, bilinear)
         # output classification
         self.out_classification = nn.Conv2d(256, num_classes, 1)
         # output residue
