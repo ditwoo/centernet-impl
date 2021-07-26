@@ -28,7 +28,7 @@ class Up(nn.Module):
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
+            self.up = nn.ConvTranspose2d(in_ch, in_ch, 2, stride=2)
         self.conv = DoubleConv(in_ch, out_ch)
 
     def forward(self, x1, x2=None):
