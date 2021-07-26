@@ -83,7 +83,7 @@ def train_fn(loader, model, device, criterion, optimizer, scheduler=None, verbos
 
 
 @torch.no_grad()
-def valid_fn(loader, model, device, criterion, num_classes, class_labels, verbose=True):
+def valid_fn(loader, model, device, criterion, num_classes, class_labels, verbose=True, threshold=0.5):
     """Validate model on a specified loader.
 
     Args:
@@ -123,7 +123,11 @@ def valid_fn(loader, model, device, criterion, num_classes, class_labels, verbos
             metrics["regr"] += regr_loss_value
             metrics["loss"] += loss_value
 
-            hm_numpy = hm.sigmoid().detach().cpu().numpy()
+            hm = hm.sigmoid()
+            pooled = torch.nn.functional.max_pool2d(hm, kernel_size=(3, 3), stride=1, padding=1)
+            hm = hm * torch.logical_and(hm >= threshold, pooled >= threshold).float()
+
+            hm_numpy = hm.detach().cpu().numpy()
             reg_numpy = reg.detach().cpu().numpy()
 
             for i in range(batch_size):
@@ -133,7 +137,7 @@ def valid_fn(loader, model, device, criterion, num_classes, class_labels, verbos
                 for cls_idx in range(hm_numpy.shape[1]):
                     # build predictions
                     cls_boxes, cls_scores = pred2box(
-                        hm_numpy[i, cls_idx], reg_numpy[i], threshold=0.5, scale=4, input_size=512
+                        hm_numpy[i, cls_idx], reg_numpy[i], threshold=0, scale=4, input_size=512
                     )
 
                     # skip empty label predictions
@@ -238,7 +242,7 @@ def experiment(device, args=None):
     # experiment parts
     #######################################################################
     seed_all(42)
-    model = ResNetCenterNet(num_classes=num_classes, model_name="resnet18")
+    model = ResNetCenterNet(num_classes=num_classes, model_name="resnet18", bilinear=True)
     if args["checkpoint"]:
         state = torch.load(args["checkpoint"], map_location="cpu")
         model.load_state_dict(state["model_state_dict"])
@@ -259,7 +263,9 @@ def experiment(device, args=None):
         log_metrics(LOGGER, train_metrics, epoch_idx, "\nTrain:", loader="train")
         # do validation, if required
         if epoch_idx % validation_period == 0:
-            valid_metrics = valid_fn(valid_loader, model, device, criterion, num_classes, class_labels, verbose=verbose)
+            valid_metrics = valid_fn(
+                valid_loader, model, device, criterion, num_classes, class_labels, verbose=verbose, threshold=0.25
+            )
             log_metrics(LOGGER, valid_metrics, epoch_idx, "\nValidation:", loader="validation")
 
         # change lr after epoch
