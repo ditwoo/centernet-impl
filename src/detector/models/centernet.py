@@ -3,21 +3,33 @@ import torchvision
 
 from .blocks import Up
 
+_backbones = {
+    "resnet18": (torchvision.models.resnet18, 512),
+    "resnet34": (torchvision.models.resnet34, 512),
+    "resnet50": (torchvision.models.resnet50, 2048),
+    "resnet101": (torchvision.models.resnet101, 2048),
+    "resnet152": (torchvision.models.resnet152, 2048),
+    "mobilenet_v2": (torchvision.models.mobilenet_v2, 1280)
+    # "mobilenet_v3_small": (torchvision.models.mobilenet_v3_small, 576),
+    # "mobilenet_v3_large": (torchvision.models.mobilenet_v3_large, 960),
+}
 
-class ResNetCenterNet(nn.Module):
-    def __init__(self, num_classes=1, model_name="resnet18", bilinear=True):
+
+class CenterNet(nn.Module):
+    def __init__(self, num_classes=1, backbone="resnet18", bilinear=True):
         super().__init__()
         # create backbone.
-        basemodel = torchvision.models.resnet18(pretrained=True)  # turn this on for training
-        basemodel = nn.Sequential(*list(basemodel.children())[:-2])
+        basemodel = _backbones[backbone][0](pretrained=True)
+        if backbone == "mobilenet_v2":
+            layers = list(basemodel.children())[:-1]
+        else:
+            layers = list(basemodel.children())[:-2]
+        basemodel = nn.Sequential(*layers)
         # set basemodel
         self.base_model = basemodel
         self.bilinear = bilinear
 
-        if model_name == "resnet34" or model_name == "resnet18":
-            num_ch = 512
-        else:
-            num_ch = 2048
+        num_ch = _backbones[backbone][1]
 
         self.up1 = Up(num_ch, 512, bilinear)
         self.up2 = Up(512, 256, bilinear)

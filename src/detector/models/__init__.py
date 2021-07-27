@@ -1,1 +1,1 @@
-from detector.models.centernet import ResNetCenterNet  # noqa: F401
+from detector.models.centernet import CenterNet  # noqa: F401

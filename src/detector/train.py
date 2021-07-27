@@ -8,7 +8,7 @@ from mean_average_precision import MetricBuilder
 
 from detector.criterions import CenterLoss
 from detector.datasets import get_loaders, pred2box
-from detector.models import ResNetCenterNet
+from detector.models import CenterNet
 from detector.utils import (
     OPTIMIZER_REGISTRY,
     SCHEDULER_REGISTRY,
@@ -242,7 +242,7 @@ def experiment(device, args=None):
     # experiment parts
     #######################################################################
     seed_all(42)
-    model = ResNetCenterNet(num_classes=num_classes, model_name="resnet18", bilinear=True)
+    model = CenterNet(num_classes=num_classes, backbone="mobilenet_v2", bilinear=True)
     if args["checkpoint"]:
         state = torch.load(args["checkpoint"], map_location="cpu")
         model.load_state_dict(state["model_state_dict"])
